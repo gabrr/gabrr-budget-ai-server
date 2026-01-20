@@ -1,160 +1,85 @@
-Gabrr Budget – Backend (MVP)
-===========================
+# Gabrr Budget API
 
-Gabrr Budget is a lightweight budgeting backend focused on one core problem:
-extracting financial transactions from CSV and PDF statements and returning
-clean, structured data that can later be categorised by users.
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-API-green)](https://fastapi.tiangolo.com/)
+[![OpenRouter](https://img.shields.io/badge/OpenRouter-LLM-7c3aed)](https://openrouter.ai/)
 
-This repository contains the backend API and AI agents used for document
-parsing. It is designed to be simple, vendor-agnostic, and easy to evolve.
+Parse financial documents (CSV/PDF) into normalized transactions using AI agents. Upload a file, choose a model, and receive clean, structured transaction data.
 
----------------------------------------------------------------------------
-Project Goals
----------------------------------------------------------------------------
+## System Requirements
 
-- Accept CSV and text-based PDF financial statements
-- Parse and normalise transactions into a consistent JSON format
-- Use AI agents (Google ADK) to orchestrate parsing logic
-- Keep humans in control of categorisation (no auto-categorisation)
-- Provide a clean foundation that can later support workers, databases,
-  authentication providers, and additional agents
+- Python 3.11+
+- `uv` package manager (recommended)
+- OpenRouter API key
+- PDF parsing uses Docling; if PDF parsing fails due to system libs, see Docling install notes
 
-This MVP intentionally avoids complexity. It proves the parsing pipeline end
-to end.
+## Quick Start (UV)
 
----------------------------------------------------------------------------
-What This MVP Does
----------------------------------------------------------------------------
+```bash
+# Install uv (if needed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-- Exposes a single HTTP endpoint to upload a CSV or PDF
-- Uses a Google ADK agent with tools to:
-  - Parse CSV files using Python’s csv module
-  - Parse text-based PDFs using Docling
-  - Normalise extracted data into a strict schema
-- Returns a JSON array of transactions
+# Install dependencies
+uv sync
 
----------------------------------------------------------------------------
-What This MVP Does NOT Do
----------------------------------------------------------------------------
+# Configure environment
+cp .env.example .env
+# Add OPENROUTER_API_KEY in .env
 
-- No database or persistence
-- No authentication or user accounts
-- No background workers or queues
-- No OCR (scanned PDFs are not supported)
-- No automatic categorisation or budgeting logic
+# Run the API
+uv run uvicorn app.main:app --reload --port 8000 --env-file .env
+```
 
----------------------------------------------------------------------------
-Technology Stack
----------------------------------------------------------------------------
+## How It Works
 
-Backend:
-- Python 3.12+
-- FastAPI
-- Google Agent Development Kit (ADK)
-- Docling (PDF parsing)
-- uv (dependency and environment management)
+- FastAPI receives an uploaded CSV or PDF.
+- Google ADK runs a parsing agent with tool access.
+- Tools extract raw transactions (CSV or PDF).
+- Results are validated and returned in a strict schema.
 
-Runtime:
-- In-process agents (FastAPI calls agents directly)
-- No external agent hosting required
+## Why This Stack
 
----------------------------------------------------------------------------
-Requirements
----------------------------------------------------------------------------
+- **Google ADK**: agent orchestration with structured tool calls.
+- **LiteLLM**: model-agnostic interface.
+- **OpenRouter**: access multiple providers with one key.
+- **Docling**: reliable PDF table/text extraction.
 
-- Python 3.12 or newer
-- uv installed (https://github.com/astral-sh/uv)
-- A supported LLM provider configured for Google ADK
-- Text-based PDF statements (not scanned images)
+## Usage
 
----------------------------------------------------------------------------
-Environment Variables
----------------------------------------------------------------------------
+```bash
+# Health check
+curl http://localhost:8000/health
 
-The application is configured using environment variables.
+# Parse CSV (default model)
+curl -X POST http://localhost:8000/parse \
+  -F "file=@transactions.csv"
 
-Common variables:
+# Parse PDF with specific model
+curl -X POST "http://localhost:8000/parse?model_id=anthropic:claude-3.5-sonnet" \
+  -F "file=@statement.pdf"
+```
 
-- APP_ENV=local
-- MAX_UPLOAD_MB=10
-- ADK_MODEL=<model identifier supported by ADK>
-- Any additional credentials required by the chosen LLM provider
+## Response Shape
 
-Create a .env file or export these variables in your shell.
+```json
+[
+  {
+    "date": "2024-01-15",
+    "description": "Coffee Shop Purchase",
+    "amount": -4.50,
+    "currency": "USD",
+    "merchant_raw": "STARBUCKS #1234",
+    "source": "csv"
+  }
+]
+```
 
----------------------------------------------------------------------------
-Installation
----------------------------------------------------------------------------
+## Model ID Format
 
-1. Clone the repository
-2. Initialise the project environment
+Models are specified as `provider:model`, for example:
 
-   uv init
-   uv venv --python 3.12
-   uv add fastapi uvicorn python-multipart pydantic google-adk docling
+- `openai:gpt-4o`
+- `anthropic:claude-3.5-sonnet`
+- `google:gemini-2.0-flash`
 
-3. Activate the environment (if not using uv run)
-
----------------------------------------------------------------------------
-Running the Server
----------------------------------------------------------------------------
-
-Start the API in development mode:
-
-   uv run uvicorn app.main:app --reload
-
-The API will be available at:
-http://localhost:8000
-
----------------------------------------------------------------------------
-API Usage
----------------------------------------------------------------------------
-
-POST /parse
-
-- Accepts a multipart file upload
-- Supported formats: .csv, .pdf
-- Returns a JSON array of normalised transactions
-
-Each transaction includes:
-- date
-- description
-- amount
-- currency (optional)
-- merchant_raw (optional)
-- source (csv or pdf)
-
----------------------------------------------------------------------------
-Error Handling
----------------------------------------------------------------------------
-
-- Unsupported file types return HTTP 400
-- Files exceeding MAX_UPLOAD_MB return HTTP 400
-- Parsing failures return HTTP 400 with a short error message
-
----------------------------------------------------------------------------
-Design Principles
----------------------------------------------------------------------------
-
-- Vendor neutrality: providers are replaceable
-- Human-in-the-loop by default
-- Minimal surface area for the MVP
-- Clear separation between API logic and agent logic
-- Explicit non-goals to avoid accidental scope creep
-
----------------------------------------------------------------------------
-Future Evolution (Out of Scope for MVP)
----------------------------------------------------------------------------
-
-- Background workers for parsing
-- Persistent storage (Postgres)
-- User authentication and multi-tenancy
-- Merchant enrichment and categorisation agents
-- OCR support for scanned documents
-- Budget summaries and analytics
-
----------------------------------------------------------------------------
-License
----------------------------------------------------------------------------
-
-Internal / private project. Licensing to be defined.
+All models are accessed through OpenRouter, so you only need one API key.
