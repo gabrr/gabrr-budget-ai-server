@@ -1,10 +1,16 @@
 import asyncio
 from io import BytesIO
+from pathlib import Path
 
 import pytest
 from fastapi import HTTPException, UploadFile
 
-from app.utils.files import detect_file_type, ensure_not_empty, read_upload_bytes
+from app.utils.files import (
+    detect_file_type,
+    ensure_not_empty,
+    read_upload_bytes,
+    writeToExternalMd,
+)
 
 
 def make_upload_file(filename: str, content: bytes) -> UploadFile:
@@ -38,3 +44,30 @@ def test_ensure_not_empty() -> None:
     with pytest.raises(HTTPException) as exc:
         ensure_not_empty(b"")
     assert exc.value.status_code == 400
+
+
+def test_write_to_external_md_creates_file() -> None:
+    content = "Hello from tests."
+    output_path = writeToExternalMd(content, "sample.pdf")
+
+    try:
+        assert output_path.exists()
+        assert output_path.name == "sample.md"
+        assert output_path.parent.name == "md_files"
+        assert output_path.read_text(encoding="utf-8") == content
+    finally:
+        if output_path.exists():
+            output_path.unlink()
+
+
+def test_write_to_external_md_default_filename() -> None:
+    content = "Default filename content."
+    output_path = writeToExternalMd(content, None)
+
+    try:
+        assert output_path.exists()
+        assert output_path.name == "upload.md"
+        assert output_path.read_text(encoding="utf-8") == content
+    finally:
+        if output_path.exists():
+            output_path.unlink()

@@ -53,7 +53,7 @@ def ensure_not_empty(file_bytes: bytes) -> None:
         )
 
 
-def writeToExternalMd(file_bytes: bytes, filename: str | None) -> Path:
+def writeToExternalMd(string: str, filename: str | None) -> Path:
     base_dir = Path(__file__).resolve().parents[2]
     md_dir = base_dir / "md_files"
     md_dir.mkdir(parents=True, exist_ok=True)
@@ -61,7 +61,7 @@ def writeToExternalMd(file_bytes: bytes, filename: str | None) -> Path:
     stem = Path(filename).stem if filename else "upload"
     target_path = md_dir / f"{stem}.md"
 
-    with target_path.open("ab") as output_file:
-        output_file.write(file_bytes)
+    with target_path.open("w", encoding="utf-8") as output_file:
+        output_file.write(string)
 
     return target_path
