@@ -12,3 +12,4 @@ venv/**/*
 .env*
 file_examples/**/*
 md_files/**/*
+exports/**/*
