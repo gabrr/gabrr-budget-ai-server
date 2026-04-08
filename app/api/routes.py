@@ -11,8 +11,8 @@ from app.mock_data import store
 from app.schemas import (
     Category,
     CategoryCreate,
-    CategoryKey,
     CategoryUpdate,
+    ExpenseCategory,
     Transaction,
     TransactionBulkCreate,
     TransactionCreate,
@@ -23,17 +23,6 @@ from app.utils.files import writeToExternalMd
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-
-
-@router.get("/health")
-async def health_check() -> dict:
-    """Health check endpoint.
-
-    Returns:
-        Status object indicating the service is healthy
-    """
-    return {"status": "ok"}
-
 
 @router.get("/categories", response_model=list[Category])
 async def list_categories() -> list[Category]:
@@ -62,7 +51,7 @@ async def delete_category(category_id: str) -> dict[str, str]:
 
 @router.get("/transactions", response_model=TransactionListResponse)
 async def list_transactions(
-    category: CategoryKey | None = None,
+    category: ExpenseCategory | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
     limit: int = Query(default=50, ge=1, le=200),
@@ -103,26 +92,3 @@ async def delete_transaction(transaction_id: str) -> dict[str, str]:
     return store.delete_transaction(transaction_id)
 
 
-@router.post("/parse")
-async def parse_file(file: UploadFile) -> dict:
-    converter = DocumentConverter()
-    suffix = Path(file.filename).suffix if file.filename else ""
-
-    temp_path = None
-
-    try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
-            temp_path = temp_file.name
-            temp_file.write(await file.read())
-
-        result = converter.convert(temp_path)
-        markdown = result.document.export_to_markdown()
-
-        writeToExternalMd(markdown, file.filename)
-
-        logger.info("Parsed document to markdown (%s bytes)", len(markdown))
-
-        return {"status": "All good", "markdown": markdown}
-    finally:
-        if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)

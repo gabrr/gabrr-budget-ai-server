@@ -9,15 +9,15 @@ from fastapi import HTTPException, status
 from app.schemas import (
     Category,
     CategoryCreate,
-    CategoryKey,
     CategoryUpdate,
+    ExpenseCategory,
     Transaction,
     TransactionBulkCreate,
     TransactionCreate,
     TransactionUpdate,
 )
 
-DEFAULT_CATEGORIES: list[tuple[CategoryKey, str]] = [
+DEFAULT_CATEGORIES: list[tuple[ExpenseCategory, str]] = [
     ("food", "Food"),
     ("transportation", "Transport"),
     ("health", "Health"),
@@ -25,7 +25,6 @@ DEFAULT_CATEGORIES: list[tuple[CategoryKey, str]] = [
     ("needs", "Needs"),
     ("fun", "Fun"),
     ("donations", "Donations"),
-    ("credit", "Credit"),
     ("clothing", "Clothing"),
     ("renting", "Renting"),
     ("home", "Home"),
@@ -112,7 +111,7 @@ class MockBudgetStore:
     def list_transactions(
         self,
         *,
-        category: CategoryKey | None = None,
+        category: ExpenseCategory | None = None,
         date_from: date | None = None,
         date_to: date | None = None,
         limit: int = 50,
