@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
+
+from app.db.models.base import TimestampModel
 
 
 class ExpenseCategory(str, Enum):
@@ -23,23 +25,11 @@ class ExpenseCategory(str, Enum):
     COMPANY = "company"
     OTHERS = "others"
 
-
-class CategoryBase(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
+class Category(TimestampModel):
+    id: str | None = None
+    user_id: str | None = None
     key: ExpenseCategory
     name: str = Field(min_length=1)
+    is_system: bool = False
 
 
-class Category(CategoryBase):
-    id: str
-
-
-class CategoryCreate(CategoryBase):
-    id: str | None = None
-
-
-class CategoryUpdate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    name: str | None = Field(default=None, min_length=1)

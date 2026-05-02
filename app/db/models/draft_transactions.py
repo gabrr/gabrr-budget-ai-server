@@ -1,41 +1,39 @@
 from __future__ import annotations
 
-from datetime import date as DateValue
-from datetime import datetime
+from datetime import date
 from decimal import Decimal
+from typing import Any
 
 from pydantic import Field, field_validator
 
 from app.db.models.base import TimestampModel
-from app.db.models.categories import ExpenseCategory
 
 
-class Transaction(TimestampModel):
+class DraftTransaction(TimestampModel):
     id: str | None = None
-    user_id: str | None = None
+    import_id: str
+    source_row_index: int | None = None
     account_id: str | None = None
     category_id: str | None = None
-    category: ExpenseCategory | None = None
-    source_import_id: str | None = None
-    source_draft_transaction_id: str | None = None
-    posted_at: DateValue | None = None
-    date: DateValue | None = None
+    posted_at: date | None = None
     description: str | None = Field(default=None, min_length=1)
     merchant_name: str | None = None
-    merchant: str | None = None
     amount: Decimal | None = None
     currency: str | None = None
     payment_method: str | None = None
     installments: int | None = None
     installments_current: int | None = None
-    card_name: str | None = None
-    comment: str | None = None
-    tags: list[str] | None = None
-    reverted_at: datetime | None = None
+    confidence: Decimal | None = None
+    needs_review: bool = True
+    review_reason: str | None = None
+    duplicate_of_transaction_id: str | None = None
+    status: str = "draft"
+    raw_payload_json: dict[str, Any] | None = None
+    committed_transaction_id: str | None = None
 
-    @field_validator("amount", mode="before")
+    @field_validator("amount", "confidence", mode="before")
     @classmethod
-    def _amount_as_decimal(cls, value: object) -> Decimal | None:
+    def _as_decimal(cls, value: object) -> Decimal | None:
         if value is None or isinstance(value, bool):
             return None
         if isinstance(value, Decimal):
