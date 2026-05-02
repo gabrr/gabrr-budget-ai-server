@@ -6,15 +6,12 @@ from uuid import uuid4
 
 from fastapi import HTTPException, status
 
-from app.schemas import (
+from app.db.models import (
     Category,
     CategoryCreate,
     CategoryUpdate,
     ExpenseCategory,
     Transaction,
-    TransactionBulkCreate,
-    TransactionCreate,
-    TransactionUpdate,
 )
 
 DEFAULT_CATEGORIES: list[tuple[ExpenseCategory, str]] = [
@@ -118,14 +115,14 @@ class MockBudgetStore:
         offset: int = 0,
     ) -> tuple[list[Transaction], int]:
         items = list(self._transactions.values())
-        items.sort(key=lambda row: (row.date, row.id), reverse=True)
+        items.sort(key=lambda row: (row.date or date.min, row.id or ""), reverse=True)
 
         if category is not None:
             items = [item for item in items if item.category == category]
         if date_from is not None:
-            items = [item for item in items if item.date >= date_from]
+            items = [item for item in items if item.date is not None and item.date >= date_from]
         if date_to is not None:
-            items = [item for item in items if item.date <= date_to]
+            items = [item for item in items if item.date is not None and item.date <= date_to]
 
         total = len(items)
         paginated = items[offset : offset + limit]
@@ -137,27 +134,29 @@ class MockBudgetStore:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
         return transaction.model_copy(deep=True)
 
-    def create_transaction(self, payload: TransactionCreate) -> Transaction:
+    def create_transaction(self, payload: Transaction) -> Transaction:
         transaction_id = payload.id or f"tx_{uuid4().hex[:10]}"
         with self._lock:
             if transaction_id in self._transactions:
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Transaction already exists")
-            transaction = Transaction(id=transaction_id, **payload.model_dump(exclude={"id"}))
+            transaction = payload.model_copy(update={"id": transaction_id})
             self._transactions[transaction.id] = transaction
         return transaction.model_copy(deep=True)
 
-    def bulk_create_transactions(self, payload: TransactionBulkCreate) -> list[Transaction]:
+    def bulk_create_transactions(self, payload: dict[str, list[Transaction]]) -> list[Transaction]:
         created: list[Transaction] = []
-        for transaction in payload.transactions:
+        for transaction in payload["transactions"]:
             created.append(self.create_transaction(transaction))
         return created
 
-    def update_transaction(self, transaction_id: str, payload: TransactionUpdate) -> Transaction:
+    def update_transaction(self, transaction_id: str, payload: Transaction) -> Transaction:
         with self._lock:
             current = self._transactions.get(transaction_id)
             if not current:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
-            updated = current.model_copy(update=payload.model_dump(exclude_none=True))
+            updated = current.model_copy(
+                update=payload.model_dump(exclude_none=True, exclude={"id"})
+            )
             self._transactions[transaction_id] = updated
         return updated.model_copy(deep=True)
 
