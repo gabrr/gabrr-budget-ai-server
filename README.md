@@ -41,12 +41,3 @@ curl -X POST http://localhost:8000/parse \
 curl -X POST "http://localhost:8000/parse" \
   -F "file=@statement.pdf"
 ```
-
-## Testing
-
-```bash
-pytest
-
-# Or via uv
-uv run pytest
-```
