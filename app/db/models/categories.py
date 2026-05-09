@@ -6,7 +6,7 @@ from enum import Enum
 
 from pydantic import Field
 
-from app.db.models.base import TimestampModel
+from app.db.models.base import DbModel, TimestampModel
 
 
 class ExpenseCategory(str, Enum):
@@ -25,11 +25,23 @@ class ExpenseCategory(str, Enum):
     COMPANY = "company"
     OTHERS = "others"
 
-class Category(TimestampModel):
-    id: str | None = None
-    user_id: str | None = None
+
+class CategoryBase(DbModel):
     key: ExpenseCategory
     name: str = Field(min_length=1)
+
+
+class CategoryCreate(CategoryBase):
+    pass
+
+
+class CategoryUpdate(DbModel):
+    name: str | None = Field(default=None, min_length=1)
+
+
+class Category(CategoryBase, TimestampModel):
+    id: str | None = None
+    user_id: str | None = None
     is_system: bool = False
 
 
