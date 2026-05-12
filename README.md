@@ -18,26 +18,6 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # Install dependencies
 uv sync
 
-# Configure environment
-cp .env.example .env
-# Add OPENROUTER_API_KEY in .env
-
 # Run the API
-uv run uvicorn app.main:app --reload --port 8000 --env-file .env
-```
-
-
-## Usage
-
-```bash
-# Health check
-curl http://localhost:8000/health
-
-# Parse CSV (default model)
-curl -X POST http://localhost:8000/parse \
-  -F "file=@transactions.csv"
-
-# Parse PDF with specific model
-curl -X POST "http://localhost:8000/parse" \
-  -F "file=@statement.pdf"
+make dev
 ```
