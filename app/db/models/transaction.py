@@ -17,7 +17,7 @@ class Transaction(TimestampModel):
     category_id: str | None = None
     category: ExpenseCategory | None = None
     source_import_id: str | None = None
-    source_draft_transaction_id: str | None = None
+    is_draft: bool = False
     posted_at: DateValue | None = None
     date: DateValue | None = None
     description: str | None = Field(default=None, min_length=1)

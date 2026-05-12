@@ -11,7 +11,6 @@ from app.db.models.categories import (
     CategoryUpdate,
     ExpenseCategory,
 )
-from app.db.models.draft_transactions import DraftTransaction
 from app.db.models.import_events import ImportEvent
 from app.db.models.import_jobs import ImportJob
 from app.db.models.imports import Import
@@ -29,7 +28,6 @@ __all__ = [
     "CategoryBase",
     "CategoryCreate",
     "CategoryUpdate",
-    "DraftTransaction",
     "ExpenseCategory",
     "Import",
     "ImportEvent",

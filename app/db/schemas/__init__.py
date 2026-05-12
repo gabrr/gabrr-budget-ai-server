@@ -4,7 +4,6 @@ from app.db.schemas.activity_events import ActivityEventSchema
 from app.db.schemas.agent_runs import AgentRunSchema
 from app.db.schemas.budgets import BudgetSchema
 from app.db.schemas.categories import CategorySchema
-from app.db.schemas.draft_transactions import DraftTransactionSchema
 from app.db.schemas.import_events import ImportEventSchema
 from app.db.schemas.import_jobs import ImportJobSchema
 from app.db.schemas.imports import ImportSchema
@@ -20,7 +19,6 @@ __all__ = [
     "Base",
     "BudgetSchema",
     "CategorySchema",
-    "DraftTransactionSchema",
     "ImportEventSchema",
     "ImportJobSchema",
     "ImportSchema",
