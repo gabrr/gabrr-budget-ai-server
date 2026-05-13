@@ -1,0 +1,13 @@
+---
+description: Prefer full-word Python names over abbreviations for variables and functions.
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Descriptive identifiers (Python)
+
+Prefer spelled-out, domain-clear names so call sites read like prose.
+
+**Abbreviation → prefer:** `svc`→`service`, `repo`→`repository`, `tx`/`txn`→`transaction`, `acct`→`account`, `cat`→`category`, `amt`→`amount`, `desc`→`description`, `num`→`number` or `count`, `qty`→`quantity`, `ref`→`reference`, `ctx`→`context`, `req`→`request`, `resp`/`res`→`response`, `err`→`error`, `db`→`database`, `sess`→`session`, `usr`→`user`, `cfg`→`config`/`settings`, `mgr`→`manager`, `buf`→`buffer`, `idx`→`index`, `obj`→concrete type name, `val`→`value` or domain-specific name, `tmp`→name the role (`scratch_path`, `staging_rows`, …), `fn`→`function`/`callback`/`handler` as fits, `args`→`arguments` when it aids clarity, `kwargs`→`keyword_arguments` or explicit names, `dict`/`list`/`len`→never as variable names (builtins), `len` shadow→`length`/`item_count`.
+
+**Exceptions:** `i`, `j`, `k` in tiny-scope loops/comprehensions; `_` / `_unused` for intentionally unused values; identifiers fixed by framework, public API, or database (e.g. `id`, path param names, ORM attributes matching column names).
