@@ -133,21 +133,23 @@ curl -sS -o /dev/null -w "%{http_code}\n" -X POST "http://127.0.0.1:8000/agents/
 
 ### Summary
 
-- Date:
-- Overall: PASS / FAIL
+- Date: 2026-05-13 (automated run in this workspace)
+- Overall: **FAIL** — ADK (`127.0.0.1:8001`) was not running; backend smoke could not validate `create_session` / run paths. Validation-only step passed.
 
 ### Results
 
 | AgentService area | Step / `mode` | HTTP | Shape OK? (Y/N) |
 | --- | --- | --- | --- |
-| `create_session` | all | | |
-| `run_text` | `text` | | |
-| `run_json` | `json` | | |
-| `stream_run_sse` | `sse` | | |
+| `create_session` | all | — | N (ADK refused connection) |
+| `run_text` | `text` | 500 | N (`Internal Server Error` — upstream unreachable) |
+| `run_json` | `json` | 500 | N (same) |
+| `stream_run_sse` | `sse` | 200 then stream abort | N (headers 200; body closed early; `curl` exit 18 outstanding read) |
+| _(FastAPI validation)_ | empty `user_id` | 422 | Y |
 
 ### Issues (wrong / broken)
 
--
+- **ADK not listening** on default `ADK_BASE_URL` → `create_session` fails; `text`/`json` return **500** (not the soft `run_json` envelope—failure happens before `run_json` completes).
+- **SSE** with dead ADK: response **200** but stream ends abruptly (client saw transfer closed with outstanding read data).
 
 ### Inefficiencies (slow, noisy, redundant)
 
