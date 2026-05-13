@@ -9,7 +9,7 @@ Parse financial documents (CSV/PDF) into normalized transactions using AI agents
 - OpenRouter API key
 - PDF parsing uses Docling; if PDF parsing fails due to system libs, see Docling install notes
 
-## Quick Start (UV)
+## Quick Start
 
 ```bash
 # Install uv (if needed)
@@ -20,4 +20,8 @@ uv sync
 
 # Run the API
 make dev
+
+# Test the AgentService (live ADK + API)
+make test-agent-service
 ```
+

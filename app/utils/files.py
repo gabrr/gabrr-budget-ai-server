@@ -14,10 +14,7 @@ def detect_file_type(filename: str) -> Literal["csv", "pdf"]:
 
     raise HTTPException(
         status_code=415,
-        detail=(
-            "Unsupported file type. Only .csv and .pdf files are accepted. "
-            f"Got: {filename}"
-        ),
+        detail=(f"Unsupported file type. Only .csv and .pdf files are accepted. Got: {filename}"),
     )
 
 

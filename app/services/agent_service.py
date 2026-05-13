@@ -7,9 +7,8 @@ import logging
 from collections.abc import AsyncIterator
 from typing import Any, Literal
 
-from typing_extensions import TypedDict
-
 import httpx
+from typing_extensions import TypedDict
 
 logger = logging.getLogger(__name__)
 
@@ -26,9 +25,11 @@ def _text_from_event(event: dict[str, Any]) -> str:
     content = event.get("content") or {}
     parts = content.get("parts") or []
     texts: list[str] = []
+
     for part in parts:
         if isinstance(part, dict) and part.get("text"):
             texts.append(part["text"])
+
     return "".join(texts).strip()
 
 
@@ -36,6 +37,7 @@ def _final_text_from_events(events: list[dict[str, Any]]) -> str:
     """Final assistant text from ADK /run event list (last event, per api-server docs)."""
     if not events:
         return ""
+
     return _text_from_event(events[-1])
 
 
@@ -45,10 +47,13 @@ def _parse_agent_json_object(text: str) -> dict[str, Any] | None:
         return None
     try:
         parsed = json.loads(text)
+
     except json.JSONDecodeError:
         return None
+
     if isinstance(parsed, dict):
         return parsed
+
     return None
 
 
@@ -76,17 +81,15 @@ class AgentService:
 
     async def create_session(self, session_id: str | None = None) -> str:
         url = f"{self._base}/apps/{self._app_name}/users/{self._user_id}/sessions"
-        payload: dict[str, Any] | None = (
-            None if session_id is None else {"session_id": session_id}
-        )
-        response = await self._client.post(
-            url, json=payload if payload is not None else {}
-        )
+        payload: dict[str, Any] | None = None if session_id is None else {"session_id": session_id}
+        response = await self._client.post(url, json=payload if payload is not None else {})
         response.raise_for_status()
         session_create_body = response.json()
         adk_session_id = session_create_body.get("id")
+
         if not isinstance(adk_session_id, str) or not adk_session_id:
             raise ValueError("ADK create_session response missing string id")
+
         return adk_session_id
 
     def _run_payload(self, session_id: str, prompt: str) -> dict[str, Any]:
@@ -101,21 +104,27 @@ class AgentService:
         response = await self._client.post(
             f"{self._base}/run", json=self._run_payload(session_id, prompt)
         )
+
         response.raise_for_status()
         events = response.json()
+
         if not isinstance(events, list):
             return ""
+
         return _final_text_from_events(events)
 
     async def run_json(self, session_id: str, prompt: str) -> AgentJsonRun:
         """Always returns {status, data}. Never raises for bad agent JSON."""
         try:
             text = await self.run_text(session_id, prompt)
+
         except httpx.HTTPError as http_error:
             logger.warning("AgentService HTTP error: %s", http_error)
+
             return envelope_error()
 
         parsed = _parse_agent_json_object(text)
+
         if parsed is None:
             logger.warning(
                 "AgentService run_json: invalid or non-object JSON (truncated): %s",
@@ -127,15 +136,14 @@ class AgentService:
     def _sse_run_payload(self, session_id: str, prompt: str) -> dict[str, Any]:
         return {**self._run_payload(session_id, prompt), "streaming": True}
 
-    async def stream_run_sse(
-        self, session_id: str, prompt: str
-    ) -> AsyncIterator[str]:
+    async def stream_run_sse(self, session_id: str, prompt: str) -> AsyncIterator[str]:
         """Stream ADK `text/event-stream` body as opaque text lines."""
+
         payload = self._sse_run_payload(session_id, prompt)
-        async with self._client.stream(
-            "POST", f"{self._base}/run_sse", json=payload
-        ) as response:
+
+        async with self._client.stream("POST", f"{self._base}/run_sse", json=payload) as response:
             response.raise_for_status()
+
             async for line in response.aiter_lines():
                 if line:
                     yield line

@@ -1,7 +1,10 @@
 {
-    "files.exclude": {
-      "**/__pycache__": true,
-      "**/*.pyc": true
-    }
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true
+  },
+  "[python]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "charliermarsh.ruff"
   }
-  
+}

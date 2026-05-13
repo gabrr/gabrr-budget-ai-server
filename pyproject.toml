@@ -19,5 +19,44 @@ dependencies = [
     "pytest>=9.0.2",
 ]
 
+[dependency-groups]
+dev = ["ruff>=0.9.9"]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["app", "tests", "alembic"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
+preview = true
+# E301–E306: PEP 8 blank-line structure (vertical spacing between definitions).
+# W29*: trailing / end-of-file whitespace on blank lines.
+select = [
+    "E301",
+    "E302",
+    "E303",
+    "E304",
+    "E305",
+    "E306",
+    "F",
+    "I",
+    "UP",
+    "W291",
+    "W292",
+    "W293",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.ruff.lint.per-file-ignores]
+"alembic/**/*.py" = ["UP"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

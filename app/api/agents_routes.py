@@ -4,7 +4,7 @@ from collections.abc import AsyncIterator
 from typing import Literal
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -39,9 +39,7 @@ async def agent_run(
                     user_id=payload.user_id,
                 )
                 adk_session_id = await agent_service.create_session()
-                async for line in agent_service.stream_run_sse(
-                    adk_session_id, payload.prompt
-                ):
+                async for line in agent_service.stream_run_sse(adk_session_id, payload.prompt):
                     yield (line + "\n").encode("utf-8")
 
         return StreamingResponse(

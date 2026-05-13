@@ -62,8 +62,12 @@ class TransactionRepository:
         offset: int = 0,
     ) -> tuple[list[TransactionSchema], int]:
         base = select(TransactionSchema).where(TransactionSchema.user_id == user_id)
-        count_base = select(func.count()).select_from(TransactionSchema).where(
-            TransactionSchema.user_id == user_id,
+        count_base = (
+            select(func.count())
+            .select_from(TransactionSchema)
+            .where(
+                TransactionSchema.user_id == user_id,
+            )
         )
 
         if category is not None:
@@ -102,11 +106,7 @@ class TransactionRepository:
         total = int(session.execute(count_base).scalar_one())
 
         if category is not None:
-            stmt = (
-                base.order_by(TransactionSchema.posted_at.desc())
-                .limit(limit)
-                .offset(offset)
-            )
+            stmt = base.order_by(TransactionSchema.posted_at.desc()).limit(limit).offset(offset)
         else:
             stmt = (
                 base.options(joinedload(TransactionSchema.category))

@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import Field
 
 from app.db.models.base import DbModel, TimestampModel
 
 
-class ExpenseCategory(str, Enum):
+class ExpenseCategory(StrEnum):
     """Fixed vocabulary for `category` on transactions (JSON uses the value strings)."""
 
     FOOD = "food"
@@ -43,5 +43,3 @@ class Category(CategoryBase, TimestampModel):
     id: str | None = None
     user_id: str | None = None
     is_system: bool = False
-
-

@@ -1,0 +1,23 @@
+---
+description: Use blank lines inside Python functions so logic is not cramped.
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Vertical readability (Python)
+
+In non-trivial functions, separate **logical steps** with **one blank line** (paragraph breaks), not large gaps. Prefer readable blocks over dense walls of code.
+
+**When to add a blank line**
+
+- After **setup** (locals, early guards) and before the next distinct step (`try`, `async with`, main loop, etc.).
+- Between **`try` / `except` / `finally`** sections and the code that follows.
+- After a **multi-line** call or literal and the next statement.
+- Before **`return`** when it concludes a distinct block (e.g. after validation or logging).
+- Between an **outer** context manager and an **inner** loop or nested block.
+
+**Ruff / formatter:** `ruff format` normalizes layout but does **not** insert these paragraph breaks; apply this layout when authoring and reviewing.
+
+**If it is still hard to scan:** extract a small **private helper** (`_function_name`) instead of stretching one function.
+
+**House style reference:** [`app/services/agent_service.py`](app/services/agent_service.py).

@@ -6,6 +6,7 @@ Create Date: 2026-05-09 02:22:13.202688
 
 Tables ordered for FK dependencies.
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa

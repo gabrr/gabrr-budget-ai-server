@@ -8,9 +8,7 @@ from app.db.base import Base, TimestampMixin, new_id
 
 class CategorySchema(TimestampMixin, Base):
     __tablename__ = "categories"
-    __table_args__ = (
-        UniqueConstraint("user_id", "key", name="uq_categories_user_key"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "key", name="uq_categories_user_key"),)
 
     id: Mapped[str] = mapped_column(
         String(32),
