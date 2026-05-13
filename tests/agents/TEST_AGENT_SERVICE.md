@@ -11,6 +11,54 @@ flowchart LR
   cli --> api --> svc --> adk
 ```
 
+### Start here
+
+- Default ports: **ADK** `8001` (`ADK_BASE_URL`), **API** `8000` (`make dev`).
+- Start **backend** from `backend/`: `make dev` (needs `DATABASE_URL` in `.env`).
+- Then **Step A** (ADK reachability) before any `/agents/run` curls.
+
+---
+
+## At a glance — this run
+
+Fill **one row** after each smoke so readers see status without scrolling.
+
+| Layer | Status | One-line why |
+| --- | --- | --- |
+| ADK reachable | ⬜ 🟢 / 🟡 / 🔴 | e.g. refused / HTTP 404 / OK |
+| Backend API | ⬜ 🟢 / 🟡 / 🔴 | e.g. down / slow / OK |
+| `mode: "text"` | ⬜ 🟢 / 🟡 / 🔴 | HTTP 200 + JSON key `"text"` (string; **empty OK** per service) |
+| `mode: "json"` | ⬜ 🟢 / 🟡 / 🔴 | envelope + `status` |
+| `mode: "sse"` | ⬜ 🟢 / 🟡 / 🔴 | stream + `Content-Type` |
+| Validation (`user_id` empty) | ⬜ 🟢 / 🟡 / 🔴 | expect **422** |
+
+**Legend:** 🟢 healthy · 🟡 acceptable but investigate · 🔴 wrong or blocked.
+
+```mermaid
+flowchart TD
+  R[POST /agents/run]
+  R --> C{Transport OK?}
+  C -->|no| F1[🔌 ADK or API host/port, firewall, process down]
+  C -->|yes| H{HTTP 2xx?}
+  H -->|no| F2[⚠️ 4xx/5xx before body — route, DB env, ADK proxy]
+  H -->|yes| S{Body or stream matches mode?}
+  S -->|no| F3[📄 Shape/parse — empty text, error envelope, SSE ended early]
+  S -->|yes| OK[✅ Happy path]
+```
+
+---
+
+## Definition of PASS (order matters)
+
+1. **ADK** responds on `ADK_BASE_URL` (any HTTP beats “connection refused”).
+2. **Backend** `make dev` up with valid `DATABASE_URL` + `.env`.
+3. **`text`:** HTTP **200** and JSON contains `"text"` (string; may be empty if ADK returns non-list body — see service).
+4. **`json`:** HTTP **200** and `{"status":"success"|"error","data":{...}}` — on bad agent JSON or upstream `httpx.HTTPError`, `status` is `error` and `data` is `{}` (handler does not raise).
+5. **`sse`:** HTTP **200**, `Content-Type: text/event-stream`, stream delivers lines or ends cleanly within `ADK_TIMEOUT_SECONDS`.
+6. **Validation:** empty `user_id` → **422**.
+
+**500 on `text`/`json` with ADK down** is upstream failure during `create_session` / `run_text`, not a bug in the JSON envelope path.
+
 ---
 
 ## AgentService coverage matrix
@@ -24,6 +72,20 @@ flowchart LR
 | `_run_payload` / `_sse_run_payload` | Indirectly | Successful `text` / `sse` calls imply ADK accepted the POST body shape. |
 
 **Helpers** (`_text_from_event`, `_final_text_from_events`, `_parse_agent_json_object`, `envelope_success` / `envelope_error`): covered indirectly via `run_text` / `run_json` results—no need to import private symbols.
+
+---
+
+## Symptom → likely cause (read this when something breaks)
+
+| You see | Likely cause |
+| --- | --- |
+| `curl: (7) Failed to connect` / HTTP `000` | ADK or API not listening; wrong host/port; firewall. |
+| **500** + plain `Internal Server Error` on `text`/`json` | Upstream ADK/session/run failed before JSON envelope (`create_session` / `run_text` raises). |
+| **422** on `/agents/run` | Request validation (`user_id` length, `mode`, etc.). |
+| **200** + `{"text":""}` | ADK `/run` body was not a JSON **list** of events (`run_text`). |
+| **200** + `{"status":"error","data":{}}` for `json` | `httpx.HTTPError` **or** assistant output was not a single JSON **object** — check API logs. |
+| **200** + `text/event-stream` but `curl` exit **18** (outstanding read) | Upstream closed stream early (often ADK gone mid-stream). |
+| `ValueError` / missing session `id` in logs | ADK session JSON missing string `id` after `raise_for_status`. |
 
 ---
 
@@ -84,6 +146,8 @@ curl -sS -X POST "http://127.0.0.1:8000/agents/run" \
 
 - [ ] HTTP **200**; body includes `"text"`.
 
+**Optional (`jq`):** `... | jq -e 'has("text") and (.text|type=="string")' >/dev/null && echo OK_text_keys`
+
 ### `run_json` (`mode: "json"`)
 
 Use a prompt that forces a **single JSON object** from the model (otherwise expect `status: "error"`).
@@ -95,6 +159,8 @@ curl -sS -X POST "http://127.0.0.1:8000/agents/run" \
 ```
 
 - [ ] HTTP **200**; `status` is `success` or `error`; `data` is an object.
+
+**Optional (`jq`):** `... | jq -e 'has("status","data") and (.data|type=="object")' >/dev/null && echo OK_json_envelope`
 
 **Negative check (optional):** same call with a prompt that returns plain text or an array—expect `status: "error"`, `data: {}`.
 
@@ -108,6 +174,10 @@ curl -sS -N -X POST "http://127.0.0.1:8000/agents/run" \
 
 - [ ] HTTP **200**; streaming body; cancel with Ctrl+C when satisfied.
 
+If the stream stops immediately, compare with [Symptom → likely cause](#symptom--likely-cause-read-this-when-something-breaks) and `ADK_TIMEOUT_SECONDS` (long hangs = stuck upstream).
+
+**Headers check (optional):** `curl -sS -D - -o /dev/null -N -X POST ... | grep -i '^content-type: text/event-stream'`
+
 ### Request validation (optional)
 
 ```bash
@@ -120,6 +190,26 @@ curl -sS -o /dev/null -w "%{http_code}\n" -X POST "http://127.0.0.1:8000/agents/
 
 ---
 
+## Optional: one-shot bash rubric
+
+Copy-paste; prints HTTP codes and short labels. Does **not** replace reading bodies for `text`/`json`.
+
+```bash
+BASE="${BASE:-http://127.0.0.1:8000}"
+ADK="${ADK_BASE_URL:-http://127.0.0.1:8001}"
+TEXT_MODE_BODY_FILE="$(mktemp)"
+JSON_MODE_BODY_FILE="$(mktemp)"
+trap 'rm -f "$TEXT_MODE_BODY_FILE" "$JSON_MODE_BODY_FILE"' EXIT
+printf "ADK root: "; curl -sS -o /dev/null -w "%{http_code}\n" "${ADK}/" || echo "(connect failed)"
+printf "text: "; curl -sS -o "$TEXT_MODE_BODY_FILE" -w "%{http_code}\n" -X POST "$BASE/agents/run" -H "Content-Type: application/json" -d '{"user_id":"smoke_user","prompt":"One word: ok","mode":"text"}' || true
+printf "json: "; curl -sS -o "$JSON_MODE_BODY_FILE" -w "%{http_code}\n" -X POST "$BASE/agents/run" -H "Content-Type: application/json" -d '{"user_id":"smoke_user","prompt":"Reply with exactly this JSON and nothing else: {\"ok\":true}","mode":"json"}' || true
+printf "validate: "; curl -sS -o /dev/null -w "%{http_code}\n" -X POST "$BASE/agents/run" -H "Content-Type: application/json" -d '{"user_id":"","prompt":"x","mode":"text"}' || true
+command -v jq >/dev/null 2>&1 && jq -e 'has("text")' "$TEXT_MODE_BODY_FILE" >/dev/null 2>&1 && echo "  (jq: text key OK)" || echo "  (jq: skip or text shape check failed)"
+command -v jq >/dev/null 2>&1 && jq -e 'has("status","data")' "$JSON_MODE_BODY_FILE" >/dev/null 2>&1 && echo "  (jq: json envelope keys OK)" || echo "  (jq: skip or json shape check failed)"
+```
+
+---
+
 ## “Good” checklist (quick)
 
 - [ ] ADK up; backend `make dev` healthy.
@@ -129,33 +219,32 @@ curl -sS -o /dev/null -w "%{http_code}\n" -X POST "http://127.0.0.1:8000/agents/
 
 ---
 
-## Report (fill in)
+## Report (fill in — keep this section current)
+
+**Split rule:** put **your** latest numbers here; move old runs to [Appendix: archived example runs](#appendix-archived-example-runs) so operators never confuse stale 🔴 with today’s environment.
 
 ### Summary
 
-- Date: 2026-05-13 (automated run in this workspace)
-- Overall: **FAIL** — ADK (`127.0.0.1:8001`) was not running; backend smoke could not validate `create_session` / run paths. Validation-only step passed.
+- Date: _YYYY-MM-DD_
+- Overall: _PASS / PARTIAL / FAIL — one clause why_
 
 ### Results
 
-| AgentService area | Step / `mode` | HTTP | Shape OK? (Y/N) |
-| --- | --- | --- | --- |
-| `create_session` | all | — | N (ADK refused connection) |
-| `run_text` | `text` | 500 | N (`Internal Server Error` — upstream unreachable) |
-| `run_json` | `json` | 500 | N (same) |
-| `stream_run_sse` | `sse` | 200 then stream abort | N (headers 200; body closed early; `curl` exit 18 outstanding read) |
-| _(FastAPI validation)_ | empty `user_id` | 422 | Y |
+| AgentService area | Step / `mode` | HTTP | Shape OK? (Y/N) | Notes |
+| --- | --- | --- | --- | --- |
+| `create_session` | all | | | |
+| `run_text` | `text` | | | |
+| `run_json` | `json` | | | |
+| `stream_run_sse` | `sse` | | | |
+| _(FastAPI validation)_ | empty `user_id` | | | expect 422 |
 
 ### Issues (wrong / broken)
 
-- **ADK not listening** on default `ADK_BASE_URL` → `create_session` fails; `text`/`json` return **500** (not the soft `run_json` envelope—failure happens before `run_json` completes).
-- **SSE** with dead ADK: response **200** but stream ends abruptly (client saw transfer closed with outstanding read data).
+- 
 
 ### Inefficiencies (slow, noisy, redundant)
 
-- New session per request (by design in the route)—fine for smoke, costly for hot loops.
-- Default `ADK_TIMEOUT_SECONDS` = 300s can make hung upstream calls feel “stuck”.
-- `run_json` logs warnings on bad JSON / HTTP errors—watch log volume in tight loops.
+- 
 
 ### Safety / risk (pre-filled; extend if you observe more)
 
@@ -167,6 +256,39 @@ curl -sS -o /dev/null -w "%{http_code}\n" -X POST "http://127.0.0.1:8000/agents/
 
 ---
 
+## Appendix: archived example runs
+
+### 2026-05-13 — automated workspace run (**both** ADK and backend **down**)
+
+_Re-checked same day (automated): ADK `000`, API `000` — still nothing listening on defaults._
+
+**What we ran:** Step A root `curl` + `POST /agents/run` `text`; TCP refused before HTTP — `curl -w` prints **`000`**, not 500.
+
+**At a glance**
+
+| Layer | Status | One-line why |
+| --- | --- | --- |
+| ADK reachable | 🔴 | `127.0.0.1:8001` connection refused |
+| Backend API | 🔴 | `127.0.0.1:8000` connection refused |
+| `mode: "text"` | 🔴 | no TCP to API (`000`) |
+| `mode: "json"` | ⬜ | not run (same blocker) |
+| `mode: "sse"` | ⬜ | not run (same blocker) |
+| Validation | ⬜ | not run (same blocker) |
+
+**Results (honest for this scenario)**
+
+| AgentService area | Step / `mode` | HTTP | Shape OK? (Y/N) |
+| --- | --- | --- | --- |
+| `create_session` | all | — / `000` | N (never reached ADK) |
+| `run_text` | `text` | `000` | N (could not connect to API) |
+| `run_json` | `json` | — | not run |
+| `stream_run_sse` | `sse` | — | not run |
+| _(FastAPI validation)_ | empty `user_id` | — | not run |
+
+**Contrast — API up, ADK down:** Step C calls return **500** from FastAPI after `create_session`/`run_text` raises on dead ADK; SSE may show **200** + truncated stream (`curl` exit **18**). Use the [symptom table](#symptom--likely-cause-read-this-when-something-breaks) to tell the two worlds apart.
+
+---
+
 ## Done
 
-Hand this file back with the tables filled when the smoke run finishes.
+Hand this file back with the **Report** tables filled when the smoke run finishes; copy prior runs to the appendix.
