@@ -23,5 +23,4 @@ class CategorySchema(TimestampMixin, Base):
     is_system: Mapped[bool] = mapped_column(default=False, nullable=False)
 
     budgets = relationship("BudgetSchema", back_populates="category")
-    draft_transactions = relationship("DraftTransactionSchema", back_populates="category")
     transactions = relationship("TransactionSchema", back_populates="category")

@@ -30,5 +30,4 @@ class AccountSchema(TimestampMixin, Base):
 
     user = relationship("UserSchema", back_populates="accounts")
     budgets = relationship("BudgetSchema", back_populates="account")
-    draft_transactions = relationship("DraftTransactionSchema", back_populates="account")
     transactions = relationship("TransactionSchema", back_populates="account")

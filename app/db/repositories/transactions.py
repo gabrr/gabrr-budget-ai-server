@@ -31,7 +31,6 @@ def transaction_schema_to_model(
         category_id=row.category_id,
         category=category_enum,
         source_import_id=row.source_import_id,
-        source_draft_transaction_id=row.source_draft_transaction_id,
         posted_at=row.posted_at,
         date=row.posted_at,
         description=row.description,
@@ -42,6 +41,7 @@ def transaction_schema_to_model(
         installments=row.installments,
         installments_current=row.installments_current,
         reverted_at=row.reverted_at,
+        is_draft=row.is_draft,
         created_at=row.created_at,
         updated_at=row.updated_at,
     )
@@ -158,7 +158,6 @@ class TransactionRepository:
             account_id=account_id,
             category_id=payload.category_id,
             source_import_id=payload.source_import_id,
-            source_draft_transaction_id=payload.source_draft_transaction_id,
             posted_at=posted,
             description=payload.description.strip(),
             merchant_name=payload.merchant_name,
@@ -168,6 +167,7 @@ class TransactionRepository:
             installments=payload.installments,
             installments_current=payload.installments_current,
             reverted_at=payload.reverted_at,
+            is_draft=bool(payload.is_draft),
         )
         session.add(row)
         session.flush()
@@ -217,7 +217,6 @@ class TransactionRepository:
             "account_id": "account_id",
             "category_id": "category_id",
             "source_import_id": "source_import_id",
-            "source_draft_transaction_id": "source_draft_transaction_id",
             "posted_at": "posted_at",
             "description": "description",
             "merchant_name": "merchant_name",
@@ -225,6 +224,7 @@ class TransactionRepository:
             "installments": "installments",
             "installments_current": "installments_current",
             "reverted_at": "reverted_at",
+            "is_draft": "is_draft",
         }
         for pydantic_key, orm_key in field_map.items():
             if pydantic_key in data:

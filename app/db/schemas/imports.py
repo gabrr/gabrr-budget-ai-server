@@ -31,7 +31,6 @@ class ImportSchema(TimestampMixin, Base):
     reverted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     agent_runs = relationship("AgentRunSchema", back_populates="import_record")
-    draft_transactions = relationship("DraftTransactionSchema", back_populates="import_record")
     events = relationship("ImportEventSchema", back_populates="import_record")
     jobs = relationship("ImportJobSchema", back_populates="import_record")
     transactions = relationship("TransactionSchema", back_populates="source_import")

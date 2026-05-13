@@ -17,7 +17,6 @@ class Transaction(TimestampModel):
     category_id: str | None = None
     category: ExpenseCategory | None = None
     source_import_id: str | None = None
-    is_draft: bool = False
     posted_at: DateValue | None = None
     date: DateValue | None = None
     description: str | None = Field(default=None, min_length=1)
@@ -32,6 +31,7 @@ class Transaction(TimestampModel):
     comment: str | None = None
     tags: list[str] | None = None
     reverted_at: datetime | None = None
+    is_draft: bool = False
 
     @field_validator("amount", mode="before")
     @classmethod
