@@ -1,6 +1,9 @@
 # Agentic testing (index)
 
-Entry point for **Cursor / humans** to find how this repo validates **agent-related** behavior. Most product tests live under `tests/` with **pytest**; this folder holds **live integration** checks that need **ADK** and the **API** process.
+Entry point for **Cursor / humans** for **agent-related** validation outside normal pytest.
+
+- **Pytest:** [`make test`](../../README.md#testing) — collects `tests/` but **not** `tests/agents/` (agentic docs + run log only there).
+- **This folder:** agentic index + run log only (no `test_*.py`). Use **`make test-agent-service`** for live AgentService checks.
 
 ## AgentService only (this repo)
 
@@ -26,7 +29,8 @@ Up to **3** retries on the HTTP checks. Exit **0** only on full pass.
 ### Commands (from `backend/`)
 
 ```bash
-make test-agent-service          # same as: bash scripts/agent_service/test_agent_service.sh run
+make test                       # pytest: tests/ excluding tests/agents/
+make test-agent-service         # live AgentService check (same as: bash scripts/agent_service/test_agent_service.sh run)
 bash scripts/agent_service/test_agent_service.sh status
 bash scripts/agent_service/test_agent_service.sh start-api
 bash scripts/agent_service/test_agent_service.sh probe-adk

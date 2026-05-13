@@ -1,4 +1,4 @@
-.PHONY: dev serve curl-smoke test-agent-service lint format
+.PHONY: dev serve curl-smoke test test-agent-service lint format
 
 PORT ?= 8000
 
@@ -14,9 +14,9 @@ format:
 	uv run ruff format .
 	uv run ruff check --fix .
 
-# Run pytest against test DB (DATABASE_URL for app + tests). Exit 5 = no tests → treat as 0.
-test-transactions:
-	DATABASE_URL=$(DATABASE_URL_DEVTEST) uv run pytest tests/ -v; ret=$$?; if [ $$ret -eq 5 ]; then ret=0; fi; exit $$ret
+# Pytest: all tests under tests/, excluding tests/agents (agent-only docs / live checks — use `make test-agent-service`).
+test:
+	DATABASE_URL=$(DATABASE_URL_DEVTEST) uv run pytest tests/ -v --ignore=tests/agents; ret=$$?; if [ $$ret -eq 5 ]; then ret=0; fi; exit $$ret
 
 curl-smoke:
 	bash scripts/curl_smoke_transactions.sh
