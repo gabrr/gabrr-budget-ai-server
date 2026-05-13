@@ -22,4 +22,4 @@ curl-smoke:
 	bash scripts/curl_smoke_transactions.sh
 
 test-agent-service:
-	bash scripts/agent_service/test_agent_service.sh run
+	bash scripts/test_agent_service/test_agent_service.sh run

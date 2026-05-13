@@ -27,7 +27,7 @@ make dev
 | Command | What it runs |
 | --- | --- |
 | **`make test`** | **pytest** on `tests/` with **`--ignore=tests/agents`** (that folder is agentic docs + logs only, not pytest). Uses **`DATABASE_URL_DEVTEST`** from the [Makefile](Makefile) unless you override it. |
-| **`make test-agent-service`** | Live **AgentService** / ADK smoke (**not** pytest). See [`tests/agents/AGENTIC_TESTING.md`](tests/agents/AGENTIC_TESTING.md). |
+| **`make test-agent-service`** | Live **AgentService** / ADK smoke (**not** pytest): [`scripts/test_agent_service/test_agent_service.sh`](scripts/test_agent_service/test_agent_service.sh). See [`tests/agents/AGENTIC_TESTING.md`](tests/agents/AGENTIC_TESTING.md). |
 
 From **`backend/`**, **`make test`** runs:
 

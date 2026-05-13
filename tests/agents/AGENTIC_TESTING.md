@@ -11,8 +11,8 @@ Entry point for **Cursor / humans** for **agent-related** validation outside nor
 | --- | --- |
 | **Implementation** | [`app/services/agent_service.py`](../../app/services/agent_service.py) |
 | **HTTP surface** | [`app/api/agents_routes.py`](../../app/api/agents_routes.py) — `POST /agents/run` |
-| **Single integration script** | [`scripts/agent_service/test_agent_service.sh`](../../scripts/agent_service/test_agent_service.sh) |
-| **SSE digest helper** | [`scripts/agent_service/sse_digest_adk_stream.py`](../../scripts/agent_service/sse_digest_adk_stream.py) (used only by that script) |
+| **Single integration script** | [`scripts/test_agent_service/test_agent_service.sh`](../../scripts/test_agent_service/test_agent_service.sh) |
+| **SSE digest helper** | [`scripts/test_agent_service/sse_digest_adk_stream.py`](../../scripts/test_agent_service/sse_digest_adk_stream.py) (used only by that script) |
 | **Human run log** (appended) | [`agent_service_run_log.md`](agent_service_run_log.md) |
 
 ### What the AgentService test proves
@@ -30,10 +30,10 @@ Up to **3** retries on the HTTP checks. Exit **0** only on full pass.
 
 ```bash
 make test                       # pytest: tests/ excluding tests/agents/
-make test-agent-service         # live AgentService check (same as: bash scripts/agent_service/test_agent_service.sh run)
-bash scripts/agent_service/test_agent_service.sh status
-bash scripts/agent_service/test_agent_service.sh start-api
-bash scripts/agent_service/test_agent_service.sh probe-adk
+make test-agent-service         # live AgentService check (same as: bash scripts/test_agent_service/test_agent_service.sh run)
+bash scripts/test_agent_service/test_agent_service.sh status
+bash scripts/test_agent_service/test_agent_service.sh start-api
+bash scripts/test_agent_service/test_agent_service.sh probe-adk
 ```
 
 **Env:** `AGENT_NORMALIZER_ROOT`, `PORT`, `ADK_BASE_URL`, `AGENT_SERVICE_RUN_LOG` (override log path), `AGENT_SERVICE_API_LOG`, `SSE_MAX_TIME_SECS`, `SSE_HDR_LINES`, `SSE_DIGEST_MAX_BYTES`, `SSE_DIGEST_MAX_EVENTS`, `MAX_INTEGRATION_RETRIES`.
