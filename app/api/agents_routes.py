@@ -11,10 +11,10 @@ from pydantic import BaseModel, Field
 from app.config import settings
 from app.services.agent_service import AgentJsonRun, AgentService
 
-agents_router = APIRouter(tags=["agents"])
+agents_router = APIRouter(prefix="/agents", tags=["agents"])
 
 
-class AgentRunIn(BaseModel):
+class AgentRunRequestBody(BaseModel):
     """One agent invocation: ADK user namespace, prompt, and response mode."""
 
     user_id: str = Field(min_length=1)
@@ -24,7 +24,7 @@ class AgentRunIn(BaseModel):
 
 @agents_router.post("/run", response_model=None)
 async def agent_run(
-    payload: AgentRunIn,
+    payload: AgentRunRequestBody,
 ) -> dict[str, str] | AgentJsonRun | StreamingResponse:
     timeout = httpx.Timeout(settings.adk_timeout_seconds)
 

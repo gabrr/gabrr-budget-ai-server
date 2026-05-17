@@ -4,7 +4,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import router as api_router
-from app.api.agents_routes import agents_router
 
 app = FastAPI(
     title="Gabrr Budget API",
@@ -26,4 +25,3 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
-app.include_router(agents_router, prefix="/agents")

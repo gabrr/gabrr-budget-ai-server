@@ -75,12 +75,12 @@ class AgentService:
         user_id: str,
     ) -> None:
         self._client = client
-        self._base = base_url.rstrip("/")
+        self._base_url = base_url.rstrip("/")
         self._app_name = app_name
         self._user_id = user_id
 
     async def create_session(self, session_id: str | None = None) -> str:
-        url = f"{self._base}/apps/{self._app_name}/users/{self._user_id}/sessions"
+        url = f"{self._base_url}/apps/{self._app_name}/users/{self._user_id}/sessions"
         payload: dict[str, Any] | None = None if session_id is None else {"session_id": session_id}
         response = await self._client.post(url, json=payload if payload is not None else {})
         response.raise_for_status()
@@ -102,7 +102,7 @@ class AgentService:
 
     async def run_text(self, session_id: str, prompt: str) -> str:
         response = await self._client.post(
-            f"{self._base}/run", json=self._run_payload(session_id, prompt)
+            f"{self._base_url}/run", json=self._run_payload(session_id, prompt)
         )
 
         response.raise_for_status()
@@ -141,7 +141,7 @@ class AgentService:
 
         payload = self._sse_run_payload(session_id, prompt)
 
-        async with self._client.stream("POST", f"{self._base}/run_sse", json=payload) as response:
+        async with self._client.stream("POST", f"{self._base_url}/run_sse", json=payload) as response:
             response.raise_for_status()
 
             async for line in response.aiter_lines():

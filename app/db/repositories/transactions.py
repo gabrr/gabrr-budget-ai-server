@@ -13,37 +13,37 @@ from app.db.schemas.transactions import TransactionSchema
 
 
 def transaction_schema_to_model(
-    row: TransactionSchema,
+    stored_transaction_schema: TransactionSchema,
     *,
     category_key: str | None = None,
 ) -> Transaction:
     """Map ORM row to API Transaction; extra Pydantic-only fields stay unset."""
-    cat = category_key
-    if cat is None and row.category_id and row.category is not None:
-        cat = row.category.key
+    resolved_category_key = category_key
+    if resolved_category_key is None and stored_transaction_schema.category_id and stored_transaction_schema.category is not None:
+        resolved_category_key = stored_transaction_schema.category.key
 
-    category_enum = ExpenseCategory(cat) if cat else None
+    category_enum = ExpenseCategory(resolved_category_key) if resolved_category_key else None
 
     return Transaction(
-        id=row.id,
-        user_id=row.user_id,
-        account_id=row.account_id,
-        category_id=row.category_id,
+        id=stored_transaction_schema.id,
+        user_id=stored_transaction_schema.user_id,
+        account_id=stored_transaction_schema.account_id,
+        category_id=stored_transaction_schema.category_id,
         category=category_enum,
-        source_import_id=row.source_import_id,
-        posted_at=row.posted_at,
-        date=row.posted_at,
-        description=row.description,
-        merchant_name=row.merchant_name,
-        amount=row.amount,
-        currency=row.currency,
-        payment_method=row.payment_method,
-        installments=row.installments,
-        installments_current=row.installments_current,
-        reverted_at=row.reverted_at,
-        is_draft=row.is_draft,
-        created_at=row.created_at,
-        updated_at=row.updated_at,
+        source_import_id=stored_transaction_schema.source_import_id,
+        posted_at=stored_transaction_schema.posted_at,
+        date=stored_transaction_schema.posted_at,
+        description=stored_transaction_schema.description,
+        merchant_name=stored_transaction_schema.merchant_name,
+        amount=stored_transaction_schema.amount,
+        currency=stored_transaction_schema.currency,
+        payment_method=stored_transaction_schema.payment_method,
+        installments=stored_transaction_schema.installments,
+        installments_current=stored_transaction_schema.installments_current,
+        reverted_at=stored_transaction_schema.reverted_at,
+        is_draft=stored_transaction_schema.is_draft,
+        created_at=stored_transaction_schema.created_at,
+        updated_at=stored_transaction_schema.updated_at,
     )
 
 
@@ -61,8 +61,8 @@ class TransactionRepository:
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[TransactionSchema], int]:
-        base = select(TransactionSchema).where(TransactionSchema.user_id == user_id)
-        count_base = (
+        transactions_listing_query = select(TransactionSchema).where(TransactionSchema.user_id == user_id)
+        transaction_count_query = (
             select(func.count())
             .select_from(TransactionSchema)
             .where(
@@ -71,7 +71,7 @@ class TransactionRepository:
         )
 
         if category is not None:
-            base = (
+            transactions_listing_query = (
                 select(TransactionSchema)
                 .join(
                     CategorySchema,
@@ -83,7 +83,7 @@ class TransactionRepository:
                 )
                 .options(contains_eager(TransactionSchema.category))
             )
-            count_base = (
+            transaction_count_query = (
                 select(func.count())
                 .select_from(TransactionSchema)
                 .join(
@@ -97,25 +97,28 @@ class TransactionRepository:
             )
 
         if date_from is not None:
-            base = base.where(TransactionSchema.posted_at >= date_from)
-            count_base = count_base.where(TransactionSchema.posted_at >= date_from)
+            transactions_listing_query = transactions_listing_query.where(TransactionSchema.posted_at >= date_from)
+            transaction_count_query = transaction_count_query.where(TransactionSchema.posted_at >= date_from)
         if date_to is not None:
-            base = base.where(TransactionSchema.posted_at <= date_to)
-            count_base = count_base.where(TransactionSchema.posted_at <= date_to)
+            transactions_listing_query = transactions_listing_query.where(TransactionSchema.posted_at <= date_to)
+            transaction_count_query = transaction_count_query.where(TransactionSchema.posted_at <= date_to)
 
-        total = int(session.execute(count_base).scalar_one())
+        total = int(session.execute(transaction_count_query).scalar_one())
 
         if category is not None:
-            stmt = base.order_by(TransactionSchema.posted_at.desc()).limit(limit).offset(offset)
+            ordered_transactions_query = transactions_listing_query.order_by(
+                TransactionSchema.posted_at.desc()
+            ).limit(limit).offset(offset)
         else:
-            stmt = (
-                base.options(joinedload(TransactionSchema.category))
+            ordered_transactions_query = (
+                transactions_listing_query.options(joinedload(TransactionSchema.category))
                 .order_by(TransactionSchema.posted_at.desc())
                 .limit(limit)
                 .offset(offset)
             )
-        rows = list(session.scalars(stmt).unique().all())
-        return rows, total
+        transaction_schemas = list(session.scalars(ordered_transactions_query).unique().all())
+
+        return transaction_schemas, total
 
     def get_by_id(
         self,
@@ -124,7 +127,7 @@ class TransactionRepository:
         user_id: str,
         transaction_id: str,
     ) -> TransactionSchema | None:
-        stmt = (
+        select_transaction_query = (
             select(TransactionSchema)
             .where(
                 TransactionSchema.id == transaction_id,
@@ -132,7 +135,8 @@ class TransactionRepository:
             )
             .options(joinedload(TransactionSchema.category))
         )
-        return session.scalars(stmt).first()
+
+        return session.scalars(select_transaction_query).first()
 
     def create(
         self,
@@ -142,8 +146,8 @@ class TransactionRepository:
         default_user_id: str,
         default_account_id: str,
     ) -> TransactionSchema:
-        posted = payload.posted_at or payload.date
-        if posted is None:
+        posted_at = payload.posted_at or payload.date
+        if posted_at is None:
             raise ValueError("posted_at or date is required")
         if payload.description is None or not str(payload.description).strip():
             raise ValueError("description is required")
@@ -153,12 +157,12 @@ class TransactionRepository:
         user_id = payload.user_id or default_user_id
         account_id = payload.account_id or default_account_id
 
-        row = TransactionSchema(
+        new_transaction_schema = TransactionSchema(
             user_id=user_id,
             account_id=account_id,
             category_id=payload.category_id,
             source_import_id=payload.source_import_id,
-            posted_at=posted,
+            posted_at=posted_at,
             description=payload.description.strip(),
             merchant_name=payload.merchant_name,
             amount=Decimal(str(payload.amount)),
@@ -169,10 +173,11 @@ class TransactionRepository:
             reverted_at=payload.reverted_at,
             is_draft=bool(payload.is_draft),
         )
-        session.add(row)
+        session.add(new_transaction_schema)
         session.flush()
-        session.refresh(row, ["category"])
-        return row
+        session.refresh(new_transaction_schema, ["category"])
+
+        return new_transaction_schema
 
     def create_many(
         self,
@@ -182,9 +187,9 @@ class TransactionRepository:
         default_user_id: str,
         default_account_id: str,
     ) -> list[TransactionSchema]:
-        out: list[TransactionSchema] = []
+        created_transaction_schemas: list[TransactionSchema] = []
         for payload in items:
-            out.append(
+            created_transaction_schemas.append(
                 self.create(
                     session,
                     payload,
@@ -192,7 +197,8 @@ class TransactionRepository:
                     default_account_id=default_account_id,
                 )
             )
-        return out
+
+        return created_transaction_schemas
 
     def update(
         self,
@@ -202,15 +208,15 @@ class TransactionRepository:
         transaction_id: str,
         payload: Transaction,
     ) -> TransactionSchema | None:
-        row = self.get_by_id(session, user_id=user_id, transaction_id=transaction_id)
-        if row is None:
+        stored_transaction_schema = self.get_by_id(session, user_id=user_id, transaction_id=transaction_id)
+        if stored_transaction_schema is None:
             return None
 
-        data = payload.model_dump(exclude_unset=True, exclude={"id", "category"})
-        if "date" in data and "posted_at" not in data:
-            data["posted_at"] = data.pop("date")
-        elif "date" in data and "posted_at" in data:
-            data.pop("date", None)
+        patch_fields = payload.model_dump(exclude_unset=True, exclude={"id", "category"})
+        if "date" in patch_fields and "posted_at" not in patch_fields:
+            patch_fields["posted_at"] = patch_fields.pop("date")
+        elif "date" in patch_fields and "posted_at" in patch_fields:
+            patch_fields.pop("date", None)
 
         field_map = {
             "user_id": "user_id",
@@ -227,18 +233,19 @@ class TransactionRepository:
             "is_draft": "is_draft",
         }
         for pydantic_key, orm_key in field_map.items():
-            if pydantic_key in data:
-                setattr(row, orm_key, data[pydantic_key])
-        if "amount" in data and data["amount"] is not None:
-            row.amount = Decimal(str(data["amount"]))
-        if "currency" in data and data["currency"] is not None:
-            row.currency = str(data["currency"]).upper()[:3]
-        if "description" in data and data["description"] is not None:
-            row.description = str(data["description"]).strip()
+            if pydantic_key in patch_fields:
+                setattr(stored_transaction_schema, orm_key, patch_fields[pydantic_key])
+        if "amount" in patch_fields and patch_fields["amount"] is not None:
+            stored_transaction_schema.amount = Decimal(str(patch_fields["amount"]))
+        if "currency" in patch_fields and patch_fields["currency"] is not None:
+            stored_transaction_schema.currency = str(patch_fields["currency"]).upper()[:3]
+        if "description" in patch_fields and patch_fields["description"] is not None:
+            stored_transaction_schema.description = str(patch_fields["description"]).strip()
 
         session.flush()
-        session.refresh(row, ["category"])
-        return row
+        session.refresh(stored_transaction_schema, ["category"])
+
+        return stored_transaction_schema
 
     def delete_by_id(
         self,
@@ -247,8 +254,9 @@ class TransactionRepository:
         user_id: str,
         transaction_id: str,
     ) -> bool:
-        row = self.get_by_id(session, user_id=user_id, transaction_id=transaction_id)
-        if row is None:
+        stored_transaction_schema = self.get_by_id(session, user_id=user_id, transaction_id=transaction_id)
+        if stored_transaction_schema is None:
             return False
-        session.delete(row)
+        session.delete(stored_transaction_schema)
+
         return True
