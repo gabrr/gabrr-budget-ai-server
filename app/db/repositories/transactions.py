@@ -19,7 +19,11 @@ def transaction_schema_to_model(
 ) -> Transaction:
     """Map ORM row to API Transaction; extra Pydantic-only fields stay unset."""
     resolved_category_key = category_key
-    if resolved_category_key is None and stored_transaction_schema.category_id and stored_transaction_schema.category is not None:
+    if (
+        resolved_category_key is None
+        and stored_transaction_schema.category_id
+        and stored_transaction_schema.category is not None
+    ):
         resolved_category_key = stored_transaction_schema.category.key
 
     category_enum = ExpenseCategory(resolved_category_key) if resolved_category_key else None
@@ -58,10 +62,15 @@ class TransactionRepository:
         category: ExpenseCategory | None = None,
         date_from: date | None = None,
         date_to: date | None = None,
+        is_draft: bool | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[TransactionSchema], int]:
-        transactions_listing_query = select(TransactionSchema).where(TransactionSchema.user_id == user_id)
+
+        transactions_listing_query = select(TransactionSchema).where(
+            TransactionSchema.user_id == user_id
+        )
+
         transaction_count_query = (
             select(func.count())
             .select_from(TransactionSchema)
@@ -69,6 +78,21 @@ class TransactionRepository:
                 TransactionSchema.user_id == user_id,
             )
         )
+
+        if is_draft is None:
+            transactions_listing_query = transactions_listing_query.where(
+                TransactionSchema.is_draft.is_(False)
+            )
+            transaction_count_query = transaction_count_query.where(
+                TransactionSchema.is_draft.is_(False)
+            )
+        else:
+            transactions_listing_query = transactions_listing_query.where(
+                TransactionSchema.is_draft.is_(is_draft)
+            )
+            transaction_count_query = transaction_count_query.where(
+                TransactionSchema.is_draft.is_(is_draft)
+            )
 
         if category is not None:
             transactions_listing_query = (
@@ -95,20 +119,44 @@ class TransactionRepository:
                     CategorySchema.key == category.value,
                 )
             )
+            if is_draft is None:
+                transactions_listing_query = transactions_listing_query.where(
+                    TransactionSchema.is_draft.is_(False)
+                )
+                transaction_count_query = transaction_count_query.where(
+                    TransactionSchema.is_draft.is_(False)
+                )
+            else:
+                transactions_listing_query = transactions_listing_query.where(
+                    TransactionSchema.is_draft.is_(is_draft)
+                )
+                transaction_count_query = transaction_count_query.where(
+                    TransactionSchema.is_draft.is_(is_draft)
+                )
 
         if date_from is not None:
-            transactions_listing_query = transactions_listing_query.where(TransactionSchema.posted_at >= date_from)
-            transaction_count_query = transaction_count_query.where(TransactionSchema.posted_at >= date_from)
+            transactions_listing_query = transactions_listing_query.where(
+                TransactionSchema.posted_at >= date_from
+            )
+            transaction_count_query = transaction_count_query.where(
+                TransactionSchema.posted_at >= date_from
+            )
         if date_to is not None:
-            transactions_listing_query = transactions_listing_query.where(TransactionSchema.posted_at <= date_to)
-            transaction_count_query = transaction_count_query.where(TransactionSchema.posted_at <= date_to)
+            transactions_listing_query = transactions_listing_query.where(
+                TransactionSchema.posted_at <= date_to
+            )
+            transaction_count_query = transaction_count_query.where(
+                TransactionSchema.posted_at <= date_to
+            )
 
         total = int(session.execute(transaction_count_query).scalar_one())
 
         if category is not None:
-            ordered_transactions_query = transactions_listing_query.order_by(
-                TransactionSchema.posted_at.desc()
-            ).limit(limit).offset(offset)
+            ordered_transactions_query = (
+                transactions_listing_query.order_by(TransactionSchema.posted_at.desc())
+                .limit(limit)
+                .offset(offset)
+            )
         else:
             ordered_transactions_query = (
                 transactions_listing_query.options(joinedload(TransactionSchema.category))
@@ -208,7 +256,9 @@ class TransactionRepository:
         transaction_id: str,
         payload: Transaction,
     ) -> TransactionSchema | None:
-        stored_transaction_schema = self.get_by_id(session, user_id=user_id, transaction_id=transaction_id)
+        stored_transaction_schema = self.get_by_id(
+            session, user_id=user_id, transaction_id=transaction_id
+        )
         if stored_transaction_schema is None:
             return None
 
@@ -254,7 +304,9 @@ class TransactionRepository:
         user_id: str,
         transaction_id: str,
     ) -> bool:
-        stored_transaction_schema = self.get_by_id(session, user_id=user_id, transaction_id=transaction_id)
+        stored_transaction_schema = self.get_by_id(
+            session, user_id=user_id, transaction_id=transaction_id
+        )
         if stored_transaction_schema is None:
             return False
         session.delete(stored_transaction_schema)

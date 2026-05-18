@@ -1,4 +1,4 @@
-.PHONY: dev serve curl-smoke test test-agent-service lint format
+.PHONY: dev dev-worker curl-smoke test test-agent-service lint format
 
 PORT ?= 8000
 
@@ -6,6 +6,9 @@ DATABASE_URL_DEVTEST ?= postgresql+psycopg://postgres:postgres@localhost:5432/ga
 
 dev:
 	uv run uvicorn app.main:app --reload --port $(PORT) --env-file .env
+
+dev-worker:
+	uv run python -m app.workers.import_worker
 
 lint:
 	uv run ruff check .

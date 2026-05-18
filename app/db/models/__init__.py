@@ -12,7 +12,7 @@ from app.db.models.categories import (
     ExpenseCategory,
 )
 from app.db.models.import_events import ImportEvent
-from app.db.models.import_jobs import ImportJob
+from app.db.models.import_jobs import ImportJob, ImportJobPublic
 from app.db.models.imports import Import
 from app.db.models.learned_rules import LearnedRule
 from app.db.models.transaction import Transaction
@@ -32,6 +32,7 @@ __all__ = [
     "Import",
     "ImportEvent",
     "ImportJob",
+    "ImportJobPublic",
     "LearnedRule",
     "Transaction",
     "UploadedFile",

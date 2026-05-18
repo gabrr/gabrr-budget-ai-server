@@ -68,3 +68,8 @@ class FileSystemService:
         destination_path.write_bytes(uploaded_bytes)
 
         return str(destination_path.resolve())
+
+    def delete_if_exists(self, storage_path: str) -> None:
+        path = Path(storage_path)
+        if path.exists() and path.is_file():
+            path.unlink()

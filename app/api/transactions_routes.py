@@ -29,6 +29,7 @@ async def list_transactions(
     category: ExpenseCategory | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
+    is_draft: bool | None = None,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> dict[str, object]:
@@ -38,6 +39,7 @@ async def list_transactions(
         category=category,
         date_from=date_from,
         date_to=date_to,
+        is_draft=is_draft,
         limit=limit,
         offset=offset,
     )

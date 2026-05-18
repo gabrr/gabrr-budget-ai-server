@@ -22,12 +22,22 @@ uv sync
 make dev
 ```
 
+## Feature Plans
+
+Feature notes and implementation plans live in [`docs/Features`](docs/Features). Keep filenames
+numbered so they sort in the order we designed them, for example:
+
+```text
+01_pdf_import_job_feature.md
+02_next_feature_name.md
+```
+
 ## Testing
 
 | Command | What it runs |
 | --- | --- |
 | **`make test`** | **pytest** on `tests/` with **`--ignore=tests/agents`** (that folder is agentic docs + logs only, not pytest). Uses **`DATABASE_URL_DEVTEST`** from the [Makefile](Makefile) unless you override it. |
-| **`make test-agent-service`** | Live **AgentService** / ADK smoke (**not** pytest): [`scripts/test_agent_service/test_agent_service.sh`](scripts/test_agent_service/test_agent_service.sh). Exercises **`POST /agents/process-file`** (PDF upload + `run_json`). See [`tests/agents/AGENTIC_TESTING.md`](tests/agents/AGENTIC_TESTING.md). |
+| **`make test-agent-service`** | Live **Agent Gateway** / Google ADK smoke (**not** pytest): [`scripts/test_agent_service/test_agent_service.sh`](scripts/test_agent_service/test_agent_service.sh). Exercises **`POST /agents/process-file`** (PDF upload + streamed JSON extraction). See [`tests/agents/AGENTIC_TESTING.md`](tests/agents/AGENTIC_TESTING.md). |
 
 From **`backend/`**, **`make test`** runs:
 
@@ -47,4 +57,3 @@ make test DATABASE_URL_DEVTEST='postgresql+psycopg://user:pass@host:5432/dbname'
 make test
 make test-agent-service   # requires agent-normalizer `make api` + API up; see AGENTIC_TESTING.md
 ```
-

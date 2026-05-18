@@ -32,7 +32,6 @@ class ImportSchema(TimestampMixin, Base):
 
     agent_runs = relationship("AgentRunSchema", back_populates="import_record")
     events = relationship("ImportEventSchema", back_populates="import_record")
-    jobs = relationship("ImportJobSchema", back_populates="import_record")
     transactions = relationship("TransactionSchema", back_populates="source_import")
     uploaded_file = relationship("UploadedFileSchema", back_populates="imports")
     user = relationship("UserSchema", back_populates="imports")
